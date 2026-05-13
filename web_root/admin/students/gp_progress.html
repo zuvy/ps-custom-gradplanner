@@ -1,0 +1,974 @@
+<!--TemplateName:Admin-->
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Graduation Plan Progress - ~(studentname)</title>
+    ~[wc:UI_js_includes]
+    ~[wc:commonscripts]
+    <link href="/images/css/screen.css" rel="stylesheet" media="screen"/>
+    <link href="/images/css/print.css" rel="stylesheet" media="print"/>
+
+    <style>
+      /* ── TPS Custom Form styles (from grad_check_district.html) ── */
+      .progress-indicator-complete {
+        float: left;
+        font-weight: bold;
+        text-align: center;
+        color: #0202f7;
+        background-color: #00FA00;
+        width: 100px;
+      }
+      .progress-indicator-incomplete {
+        float: left;
+        font-weight: bold;
+        text-align: center;
+        color: black;
+        background-color: red;
+        width: 100px;
+      }
+      .tps_custom--non-acad-inputs {
+        width: 100px;
+      }
+      .feedback-info {
+        margin-bottom: 0px !important;
+      }
+      table {
+        margin-bottom: 0px !important;
+      }
+      #ms-credits {
+        flex: 1;
+        display: flex;
+        justify-content: space-around;
+      }
+      .alternating-rows tr:nth-child(even) { background: #eee; }
+
+      /* ── Grad Plan accordion section styles ── */
+      .tps-plan-header {
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.5rem 0;
+        user-select: none;
+      }
+      .tps-plan-progress-label {
+        font-size: 0.9em;
+        font-weight: normal;
+        color: #444;
+        white-space: nowrap;
+      }
+      .tps-overall-bar {
+        height: 12px;
+        background: #e0e0e0;
+        border-radius: 4px;
+        display: flex;
+        overflow: hidden;
+        min-width: 120px;
+        flex: 1;
+        max-width: 200px;
+      }
+      .tps-toggle-icon {
+        margin-left: auto;
+        font-size: 0.8em;
+        color: #666;
+      }
+      .tps-credit-summary-row {
+        display: flex;
+        gap: 1rem;
+        margin: 1rem 0;
+        flex-wrap: wrap;
+      }
+      .tps-credit-card {
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        padding: 0.5rem 1rem;
+        min-width: 120px;
+        text-align: center;
+        background: #f9f9f9;
+      }
+      .tps-card-label {
+        font-size: 0.85em;
+        color: #555;
+      }
+      .tps-card-value {
+        font-size: 1.2em;
+        font-weight: bold;
+      }
+      .tps-progress-bar {
+        height: 12px;
+        background: #e0e0e0;
+        border-radius: 4px;
+        display: flex;
+        overflow: hidden;
+        min-width: 80px;
+      }
+      .tps-bar-earned {
+        background: #149500;
+        height: 100%;
+      }
+      .tps-bar-enrolled {
+        background: #66ff62;
+        height: 100%;
+      }
+      .tps-req-table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .tps-req-table thead th {
+        background: #f0f0f0;
+        border-bottom: 2px solid #ccc;
+        padding: 6px 8px;
+        text-align: left;
+      }
+      .tps-req-row {
+        cursor: pointer;
+        border-bottom: 1px solid #e0e0e0;
+      }
+      .tps-req-row td {
+        padding: 6px 8px;
+        vertical-align: middle;
+      }
+      .tps-req-row:hover {
+        background: #f0f0f0;
+      }
+      .tps-req-row-expanded {
+        background: #e8f4e8;
+      }
+      .tps-expand-icon {
+        display: inline-block;
+        width: 1rem;
+        font-size: 0.75em;
+      }
+      .tps-detail-cell {
+        background: #f8f8f8;
+        padding: 0.5rem 1rem;
+        border-bottom: 2px solid #ccc;
+      }
+      .tps-sub-table {
+        width: 100%;
+        margin-bottom: 0.5rem;
+        border-collapse: collapse;
+      }
+      .tps-sub-table td {
+        padding: 4px 8px;
+        vertical-align: middle;
+      }
+      .tps-course-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 0.5rem;
+      }
+      .tps-course-table th {
+        background: #e8e8e8;
+        padding: 4px 8px;
+        text-align: left;
+        font-size: 0.85em;
+      }
+      .tps-course-table td {
+        padding: 4px 8px;
+        border-bottom: 1px solid #eee;
+        font-size: 0.85em;
+      }
+      .tps-enrolled-row {
+        color: #556;
+        font-style: italic;
+      }
+      .tps-gpa-section {
+        margin: 0.5rem 0;
+        padding: 0.5rem;
+        background: #f5f5f5;
+        border-radius: 4px;
+      }
+      .tps-met { color: green; font-weight: bold; }
+      .tps-not-met { color: red; font-weight: bold; }
+      .tps-section-header {
+        font-size: 1em;
+        font-weight: bold;
+        margin-top: 1rem;
+        border-top: 1px solid #ddd;
+        padding-top: 0.5rem;
+      }
+      .tps-no-detail {
+        padding: 0.5rem;
+        color: #888;
+        font-style: italic;
+      }
+    </style>
+
+    <script>
+      function refreshSideBar() {
+        if (window.parent.frames["menu"]) {
+          window.parent.frames["menu"].location.reload();
+        }
+      }
+    </script>
+
+    <script>
+      ;(function ($, tps_custom) {
+
+        function getValue(obj) {
+          if (obj.find(">:first-child").is("font")) {
+            return normalizeValue(obj.find(">:first-child").text());
+          } else if (obj.find(">:first-child").length === 0) {
+            return normalizeValue(obj.text());
+          } else {
+            return normalizeValue(obj.find(">:first-child").val());
+          }
+        }
+
+        function normalizeValue(value) {
+          if (typeof value !== 'string') { return; }
+          return value.trim().toLowerCase();
+        }
+
+        $(function () {
+          var primary_gp_name = $('#tps-primary-grad-plan').text();
+          var alt_flag = 0;
+          var fafsa    = $('#tps-fafsa');
+          var pfl      = $('#tps-pfl');
+          var cpr      = $('#tps-cpr');
+          var cvcs     = $('#tps-civics');
+          var icap9    = $('#tps-icap9');
+          var icap10   = $('#tps-icap10');
+          var icap11   = $('#tps-icap11');
+          var icap12   = $('#tps-icap12');
+          var icap_wbl = $('#tps-icap-wbl');
+          var ccra_his  = $('#tps-ccra-his');
+          var ccra_ela  = $('#tps-ccra-ela');
+          var ccra_math = $('#tps-ccra-math');
+          var ccra_sci  = $('#tps-ccra-sci');
+          var ok_promise = normalizeValue($('#tps-ok-promise').data('raw-value'));
+
+          var requirement_elements = [icap9, icap10, icap11, icap12, icap_wbl, cpr, cvcs, pfl, fafsa];
+
+          if (primary_gp_name === '2024+ Alternate Curriculum') {
+            alt_flag = 1;
+            $.each(requirement_elements, function(i, requirement) {
+              var $first_child = requirement.children(':first-child');
+              var current_value = getValue(requirement);
+              if ($first_child.is('font')) {
+                if (requirement.is(fafsa)) {
+                  requirement.text(current_value === 'yes' ? 'Yes' : 'Not Set');
+                } else {
+                  requirement.text(current_value === 'yes' ? 'Yes' : 'Exempt');
+                }
+              } else if ($first_child.is('select')) {
+                if (requirement.is(fafsa)) {
+                  $first_child.val(current_value === 'yes' ? 'Yes' : '');
+                } else {
+                  $first_child.val(current_value === 'yes' ? 'Yes' : 'Exempt');
+                }
+              }
+            });
+          }
+
+          var grad_requirements = {
+            "CPR":    getValue(cpr),
+            "FAFSA":  getValue(fafsa),
+            "PFL":    getValue(pfl),
+            "CIVICS": getValue(cvcs)
+          };
+
+          var icap_requirements = {
+            "ICAP 9":   getValue(icap9),
+            "ICAP 10":  getValue(icap10),
+            "ICAP 11":  getValue(icap11),
+            "ICAP 12":  getValue(icap12),
+            "ICAP WBL": getValue(icap_wbl)
+          };
+
+          var ccra_requirements = {
+            "CCRA History": getValue(ccra_his),
+            "CCRA Ela":     getValue(ccra_ela),
+            "CCRA Math":    getValue(ccra_math),
+            "CCRA Science": getValue(ccra_sci)
+          };
+
+          $.each(ccra_requirements, function(index, ccra_req) {
+            if (['yes', 'exempt'].includes(ccra_req)) {
+              $('#tps-ccra-indicator').append('<div class="progress-indicator-complete">' + index + '</div>');
+            } else {
+              $('#tps-ccra-indicator').append('<div class="progress-indicator-incomplete">' + index + '</div>');
+            }
+          });
+
+          $.each(icap_requirements, function(index, icap_req) {
+            if (['yes', 'exempt'].includes(icap_req)) {
+              $('#tps-icap-indicator').append('<div class="progress-indicator-complete">' + index + '</div>');
+            } else {
+              $('#tps-icap-indicator').append('<div class="progress-indicator-incomplete">' + index + '</div>');
+            }
+          });
+
+          $.each(grad_requirements, function(index, grad_req) {
+            if (['yes', 'exempt', 'complete', 'opted out'].includes(grad_req) || alt_flag === 1) {
+              $('#tps-non-academic-indicator').append('<div class="progress-indicator-complete">' + index + '</div>');
+            } else {
+              $('#tps-non-academic-indicator').append('<div class="progress-indicator-incomplete">' + index + '</div>');
+            }
+          });
+
+          var $ok_promise_error = $('#incorrect-value');
+          if (!['opted_out', 'complete', 'incomplete', ''].includes(ok_promise)) {
+            $('#tps-ok-promise').append($ok_promise_error);
+            $ok_promise_error.removeClass('concealed');
+          } else {
+            $ok_promise_error.remove();
+          }
+
+          var $ms_credits = $('#ms-credits');
+
+        /* ~[tlist_sql;
+            SELECT
+              COALESCE(SUM(CASE WHEN StoredGrades.Credit_Type LIKE '%ALG1%' THEN StoredGrades.EarnedCrHrs ELSE 0 END), 0) AS ALG1_Credits,
+              COALESCE(SUM(CASE WHEN StoredGrades.Credit_Type LIKE '%ALG2%' THEN StoredGrades.EarnedCrHrs ELSE 0 END), 0) AS ALG2_Credits,
+              COALESCE(SUM(CASE WHEN StoredGrades.Credit_Type LIKE '%GEOM%' THEN StoredGrades.EarnedCrHrs ELSE 0 END), 0) AS GEOM_Credits,
+              COALESCE(SUM(CASE WHEN StoredGrades.Credit_Type LIKE '%MFC%'
+                                AND StoredGrades.Credit_Type NOT LIKE '%ALG1%'
+                                AND StoredGrades.Credit_Type NOT LIKE '%ALG2%'
+                                AND StoredGrades.Credit_Type NOT LIKE '%GEOM%'
+                                THEN StoredGrades.EarnedCrHrs ELSE 0 END), 0) AS MFC_Credits,
+              COALESCE(SUM(StoredGrades.EarnedCrHrs), 0) AS Total_Credits
+            FROM StoredGrades
+            WHERE StoredGrades.Grade != 'F'
+              AND StoredGrades.Grade_Level IN (6, 7, 8)
+              AND (StoredGrades.Credit_Type LIKE '%ALG1%'
+                  OR StoredGrades.Credit_Type LIKE '%ALG2%'
+                  OR StoredGrades.Credit_Type LIKE '%GEOM%'
+                  OR (StoredGrades.Credit_Type LIKE '%MFC%'
+                      AND StoredGrades.Credit_Type NOT LIKE '%ALG1%'
+                      AND StoredGrades.Credit_Type NOT LIKE '%ALG2%'
+                      AND StoredGrades.Credit_Type NOT LIKE '%GEOM%'))
+              AND StoredGrades.Grade_Level IN (6, 7, 8)
+              AND StoredGrades.StudentID = ~(curstudid)
+              AND REGEXP_LIKE(StoredGrades.Grade, CHR(94) || '[' || CHR(94) ||'#]')
+          ;] */
+            var alg1  = parseFloat("~(ALG1_Credits)");
+            var alg2  = parseFloat("~(ALG2_Credits)");
+            var geom  = parseFloat("~(GEOM_Credits)");
+            var mfc   = parseFloat("~(MFC_Credits)");
+            var total = parseFloat("~(Total_Credits)");
+
+            var html = '';
+            if (alg1  > 0) { html += '<span style="background-color:#49f855; padding:4px; margin-right:100px; border-radius:4px;"><label>Algebra 1:</label> '     + alg1  + '</span>'; }
+            if (alg2  > 0) { html += '<span style="background-color:#afd1fd; padding:4px; margin-right:100px; border-radius:4px;"><label>Algebra 2:</label> '     + alg2  + '</span>'; }
+            if (geom  > 0) { html += '<span style="background-color:#afd1fd; padding:4px; margin-right:100px; border-radius:4px;"><label>Geometry:</label> '      + geom  + '</span>'; }
+            if (mfc   > 0) { html += '<span style="background-color:#afd1fd; padding:4px; margin-right:100px; border-radius:4px;"><label>Math For Credit:</label> '+ mfc   + '</span>'; }
+            if (total > 0) { html += '<span style="background-color:orange;  padding:4px; margin-right:100px; border-radius:4px;"><label>Total MS Credits:</label> '+ total + '</span>'; }
+            $ms_credits.html(html);
+        /* [/tlist_sql] */
+        });
+
+      })($j, window.tps_custom);
+    </script>
+
+  </head>
+
+  <body>
+    ~[wc:admin_header_frame_css]
+
+    <!-- breadcrumb -->
+    <a href="/admin/home.html" target="_top">Start Page</a> &gt;
+    <a href="/admin/students/home.html?selectstudent=nosearch" target="_top">Student Selection</a> &gt;
+    Graduation Plan Progress
+
+    ~[wc:admin_navigation_frame_css]
+
+    ~[wc:title_student_begin_css]Graduation Plan Progress~[wc:title_student_end_css]
+
+    <!-- ═══════════════════════════════════════════════════════════
+         SECTION 1: TPS Custom Graduation Requirements Form
+         (verbatim from grad_check_district.html lines 277–741)
+         ═══════════════════════════════════════════════════════════ -->
+
+    <!-- Custom Error Messages -->
+    <div id="incorrect-value" class="error-message concealed" classname="error-message" errorfor="tps-ok-promise">"~([Students.U_StudentsUserFields]TPS_Graduation_Progress_OHLA02)" is an incorrect value. Use the dropdown menu to correct it.</div>
+
+    <form action="/admin/students/graduationcheckdistrict.html" method="POST">
+      <div style="float: right; margin-right: 30px">
+        <a href="https://data.tulsaschools.org/student/~([Students]ID)/graduation-check" target="_blank" rel="noreferrer">View in Dashboard Grad Tracker</a>
+      </div>
+      <table id="tps_custom-grad-requirements" class="alternating-rows">
+        <colgroup>
+          <col width="50%">
+          <col width="50%">
+        </colgroup>
+        <tr bgcolor="#f6f6f6">
+          <td colspan="2" class="center">Graduation Information</td>
+        </tr>
+        <tr>
+          <td><label>Diploma Path:</label> ~([Students.S_OK_STU_X]CoreCurriculum)</td>
+          <td><label>Cohort Year (on-time graduate):</label> ~([Students]Sched_yearofgraduation)</td>
+        </tr>
+        <tr>
+          <td colspan="2">
+            <div class="feedback-info">
+              The Primary graduation plan is displayed at the top of the grad plan section. To change primary graduation plan, go to <a href="https:/admin/students/GraduationPlanner/GradPlanSelect.html?frn=~(studentfrn)">Graduation Plan Selection</a> and choose a new graduation plan or move the primary graduation plan to the top of the list of selected plans.
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <!-- ~[tlist_sql;Select GPNode.Name
+          FROM Students
+          LEFT OUTER JOIN GPStudentPlan ON GPStudentPlan.StudentID = Students.ID AND GPStudentPlan.SortOrder = 1
+          LEFT OUTER JOIN GPNode ON GPNode.GPVersionID = GPStudentPlan.GPVersionID AND GPNode.ParentID IS NULL
+          WHERE Students.ID = ~(curstudid)
+          ;] -->
+          <td><label>Primary Graduation Plan:</label></td><td id="tps-primary-grad-plan">~(GPNode.Name;Html)</td>
+          <!-- [/tlist_sql] -->
+        </tr>
+        <tr>
+          <td><label>ICAP 9th Grade:</label></td>
+          <td id="tps-icap9">
+            ~[if#mod.security.canmodifyfield=U_StudentsUserFields.TPS_GRAD_ICAP9]
+            <select name="[Students.U_StudentsUserFields]TPS_GRAD_ICAP9">
+              <option value="" selected disabled>Not Set</option>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+              <option value="Exempt">Exempt</option>
+            </select>
+            [else#mod]
+              ~[if#view.security.canviewfield=U_StudentsUserFields.TPS_GRAD_ICAP9]
+                ~(decode;~([Students.U_StudentsUserFields]TPS_GRAD_ICAP9);No;No;Yes;Yes;Exempt;Exempt;Not Set)
+              [/if#view]
+            [/if#mod]
+          </td>
+        </tr>
+        <tr>
+          <td><label>ICAP 10th Grade:</label></td>
+          <td id="tps-icap10">
+            ~[if#mod.security.canmodifyfield=U_StudentsUserFields.TPS_GRAD_ICAP10]
+            <select name="[Students.U_StudentsUserFields]TPS_GRAD_ICAP10">
+              <option value="" selected disabled>Not Set</option>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+              <option value="Exempt">Exempt</option>
+            </select>
+            [else#mod]
+              ~[if#view.security.canviewfield=U_StudentsUserFields.TPS_GRAD_ICAP10]
+                ~(decode;~([Students.U_StudentsUserFields]TPS_GRAD_ICAP10);No;No;Yes;Yes;Exempt;Exempt;Not Set)
+              [/if#view]
+            [/if#mod]
+          </td>
+        </tr>
+        <tr>
+          <td><label>ICAP 11th Grade:</label></td>
+          <td id="tps-icap11">
+            ~[if#mod.security.canmodifyfield=U_StudentsUserFields.TPS_GRAD_ICAP11]
+            <select name="[Students.U_StudentsUserFields]TPS_GRAD_ICAP11">
+              <option value="" selected disabled>Not Set</option>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+              <option value="Exempt">Exempt</option>
+            </select>
+            [else#mod]
+              ~[if#view.security.canviewfield=U_StudentsUserFields.TPS_GRAD_ICAP11]
+                ~(decode;~([Students.U_StudentsUserFields]TPS_GRAD_ICAP11);No;No;Yes;Yes;Exempt;Exempt;Not Set)
+              [/if#view]
+            [/if#mod]
+          </td>
+        </tr>
+        <tr>
+          <td><label>ICAP 12th Grade:</label></td>
+          <td id="tps-icap12">
+            ~[if#mod.security.canmodifyfield=U_StudentsUserFields.TPS_GRAD_ICAP12]
+            <select name="[Students.U_StudentsUserFields]TPS_GRAD_ICAP12">
+              <option value="" selected disabled>Not Set</option>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+              <option value="Exempt">Exempt</option>
+            </select>
+            [else#mod]
+              ~[if#view.security.canviewfield=U_StudentsUserFields.TPS_GRAD_ICAP12]
+                ~(decode;~([Students.U_StudentsUserFields]TPS_GRAD_ICAP12);No;No;Yes;Yes;Exempt;Exempt;Not Set)
+              [/if#view]
+            [/if#mod]
+          </td>
+        </tr>
+        <tr>
+          <td><label>ICAP Work-Based Learning:</label></td>
+          <td id="tps-icap-wbl">
+            ~[if#mod.security.canmodifyfield=U_StudentsUserFields.TPS_GRAD_ICAP_WBL]
+            <select name="[Students.U_StudentsUserFields]TPS_GRAD_ICAP_WBL">
+              <option value="" selected disabled>Not Set</option>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+              <option value="Exempt">Exempt</option>
+            </select>
+            [else#mod]
+              ~[if#view.security.canviewfield=U_StudentsUserFields.TPS_GRAD_ICAP_WBL]
+                ~(decode;~([Students.U_StudentsUserFields]TPS_GRAD_ICAP_WBL);No;No;Yes;Yes;Exempt;Exempt;Not Set)
+              [/if#view]
+            [/if#mod]
+          </td>
+        </tr>
+        <tr>
+          <td><label>CCRA U.S. History Test:</label></td>
+          <td id="tps-ccra-his">
+            ~[if#mod.security.canmodifyfield=U_StudentsUserFields.TPS_GRAD_CCRA_USHISTORY]
+            <select name="[Students.U_StudentsUserFields]TPS_GRAD_CCRA_USHISTORY">
+              <option value=""></option>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+              <option value="Exempt">Exempt</option>
+            </select>
+            [else#mod]
+              ~[if#view.security.canviewfield=U_StudentsUserFields.TPS_GRAD_CCRA_USHISTORY]
+                ~(decode;~([Students.U_StudentsUserFields]TPS_GRAD_CCRA_USHISTORY);No;No;Yes;Yes;Exempt;Exempt;Not Set)
+              [/if#view]
+            [/if#mod]
+          </td>
+        </tr>
+        <tr>
+          <td><label>CCRA ELA:</label></td>
+          <td id="tps-ccra-ela">
+            ~[if#mod.security.canmodifyfield=U_StudentsUserFields.TPS_GRAD_CCRA_ELA]
+            <select name="[Students.U_StudentsUserFields]TPS_GRAD_CCRA_ELA">
+              <option value=""></option>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+              <option value="Exempt">Exempt</option>
+            </select>
+            [else#mod]
+              ~[if#view.security.canviewfield=U_StudentsUserFields.TPS_GRAD_CCRA_ELA]
+                ~(decode;~([Students.U_StudentsUserFields]TPS_GRAD_CCRA_ELA);No;No;Yes;Yes;Exempt;Exempt;Not Set)
+              [/if#view]
+            [/if#mod]
+          </td>
+        </tr>
+        <tr>
+          <td><label>CCRA Mathematics:</label></td>
+          <td id="tps-ccra-math">
+            ~[if#mod.security.canmodifyfield=U_StudentsUserFields.TPS_GRAD_CCRA_MATH]
+            <select name="[Students.U_StudentsUserFields]TPS_GRAD_CCRA_MATH">
+              <option value=""></option>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+              <option value="Exempt">Exempt</option>
+            </select>
+            [else#mod]
+              ~[if#view.security.canviewfield=U_StudentsUserFields.TPS_GRAD_CCRA_MATH]
+                ~(decode;~([Students.U_StudentsUserFields]TPS_GRAD_CCRA_MATH);No;No;Yes;Yes;Exempt;Exempt;Not Set)
+              [/if#view]
+            [/if#mod]
+          </td>
+        </tr>
+        <tr>
+          <td><label>CCRA Science:</label></td>
+          <td id="tps-ccra-sci">
+            ~[if#mod.security.canmodifyfield=U_StudentsUserFields.TPS_GRAD_CCRA_SCIENCE]
+            <select name="[Students.U_StudentsUserFields]TPS_GRAD_CCRA_SCIENCE">
+              <option value=""></option>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+              <option value="Exempt">Exempt</option>
+            </select>
+            [else#mod]
+              ~[if#view.security.canviewfield=U_StudentsUserFields.TPS_GRAD_CCRA_SCIENCE]
+                ~(decode;~([Students.U_StudentsUserFields]TPS_GRAD_CCRA_SCIENCE);No;No;Yes;Yes;Exempt;Exempt;Not Set)
+              [/if#view]
+            [/if#mod]
+          </td>
+        </tr>
+        <tr>
+          <td><label>Graduation Credit Requirements Met:</label></td>
+          <td>
+            <select name="[Students.U_StudentsUserFields]TPS_Graduation_Progress">
+              <option value=""></option>
+              <option value="No">No</option>
+              <option value="Yes">Yes</option>
+            </select>
+          </td>
+        </tr>
+        <tr>
+          <td><label>OK Promise - Registered:</label></td>
+          <td id="tps-ok-promise" data-raw-value="~([Students.U_StudentsUserFields]TPS_Graduation_Progress_OHLA02)">
+            ~[if#mod.security.canmodifyfield=U_StudentsUserFields.TPS_GRADUATION_PROGRESS_OHLA02]
+            <select name="[Students.U_StudentsUserFields]TPS_Graduation_Progress_OHLA02">
+              <option value=""></option>
+              <option value="opted_out">Opted Out</option>
+              <option value="complete">Complete</option>
+              <option value="incomplete">Incomplete</option>
+            </select>
+            [else#mod]
+              ~[if#view.security.canviewfield=U_StudentsUserFields.TPS_GRADUATION_PROGRESS_OHLA02]
+                ~(decode;~([Students.U_StudentsUserFields]TPS_Graduation_Progress_OHLA02);opt_out;Opt Out;complete;Complete;incomplete;Incomplete;)
+              [/if#view]
+            [/if#mod]
+          </td>
+        </tr>
+        <tr>
+          <td><label>The student has met the 3rd core math requirement via CareerTech course:</label></td>
+          <td>
+            <select name="[Students.U_StudentsUserFields]TPS_GRAD_COREMATH">
+              <option value=""></option>
+              <option value="Yes">Yes</option>
+            </select>
+          </td>
+        </tr>
+        <tr>
+          <td><label>The student has earned a Business and Industry Recognized Endorsement:</label></td>
+          <td>~(decode;~([Students.U_StudentsUserFields]TPS_Grad_Industry;sqlText);;-;~([Students.U_StudentsUserFields]TPS_Grad_Industry))</td>
+        </tr>
+        <tr>
+          <td><label>The student has met the Oklahoma Academic Scholar distinction:</label></td>
+          <td>
+            <input type="checkbox" name="[Students.U_StudentsUserFields]TPS_Graduation_Progress_OK_A01" value="yes">
+          </td>
+        </tr>
+        <tr>
+          <td colspan="2">
+            <div class="feedback-info">Students with Middle School Math Credits are required to complete 3 years of math in high school.</div>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="2" style="padding-left:0; padding-right:0;">
+            <div style="display:flex; align-items:center;">
+              <label style="white-space:nowrap;">Middle School Math Credits:</label>
+              <div id="ms-credits"></div>
+            </div>
+          </td>
+        </tr>
+      </table>
+
+      <table>
+        <tr>
+          <td>
+            <input type="checkbox" name="[Students.U_StudentsUserFields]TPS_Graduation_Progress_AP" value="yes">
+            <label>AP Scholars</label>
+          </td>
+          <td>
+            <input type="checkbox" name="[Students.U_StudentsUserFields]TPS_Graduation_Progress_OHLA01" value="yes">
+            <label>OK Promise Received</label>
+          </td>
+          <td>
+            <input type="checkbox" name="[Students.U_StudentsUserFields]TPS_Graduation_Progress_IB" value="yes">
+            <label>IB Received (BTW Only)</label>
+          </td>
+          <td>
+            <input type="checkbox" name="[Students.U_StudentsUserFields]TPS_Graduation_Progress_AP_D01" value="yes">
+            <label>AP Diploma (Edison Only)</label>
+          </td>
+        </tr>
+      </table>
+
+      <table id="non-academic-inputs">
+        <tr bgcolor="#f6f6f6">
+          <td colspan="4" class="center bold">Non-Academic Graduation Requirements</td>
+        </tr>
+        <tr>
+          <td><label>FAFSA:</label></td>
+          <td id="tps-fafsa">
+            <select name="[Students.U_StudentsUserFields]TPS_GRAD_FAFSA">
+              <option value=""></option>
+              <option value="Yes">Yes</option>
+            </select>
+            (Beginning Cohort 2025)
+          </td>
+        </tr>
+        <tr>
+          <td><label>U.S. Civics Knowledge Assessment:</label></td>
+          <td id="tps-civics">
+            <select class="tps_custom--non-acad-inputs" name="[Students.U_StudentsUserFields]TPS_GRAD_USCIVICS">
+              <option value=""></option>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+              <option value="Exempt">Exempt</option>
+            </select>
+            (Beginning Cohort 2025)
+          </td>
+        </tr>
+        <tr>
+          <td><label>The student has satisfactorily completed the 14 modules of the Financial Literacy Passport:</label></td>
+          <td id="tps-pfl">
+            <select class="tps_custom--non-acad-inputs" name="[Students.U_StudentsUserFields]TPS_Grad_FLP">
+              <option value=""></option>
+              <option value="No">No</option>
+              <option value="Yes">Yes</option>
+              <option value="Exempt">Exempt</option>
+            </select>
+          </td>
+        </tr>
+        <tr>
+          <td><label>The student has satisfactorily completed the CPR requirement:</label></td>
+          <td id="tps-cpr">
+            <select class="tps_custom--non-acad-inputs" name="[Students.U_StudentsUserFields]TPS_Grad_CPR">
+              <option value=""></option>
+              <option value="No">No</option>
+              <option value="Yes">Yes</option>
+              <option value="Exempt">Exempt</option>
+            </select>
+          </td>
+        </tr>
+      </table>
+
+      <table id="tps-non-academic-requirements">
+        <tr>
+          <td colspan="2">
+            <div class="feedback-info">From 9th, 10th, 11th, 12th Grade ICAP, And ICAP Work-Based Learning results.</div>
+          </td>
+        </tr>
+        <tr>
+          <td><label>The student has satisfactorily completed all ICAP requirements:</label></td>
+          <td>~(*powerquery;query=org.tulsaschools.tps_custom.dats.students.icap_combined)</td>
+        </tr>
+        <tr style="border-bottom: 2px solid black">
+          <td><label>ICAP Progress:</label></td><td id="tps-icap-indicator"></td>
+        </tr>
+        <tr>
+          <td colspan="2">
+            <div class="feedback-info">CCRA requirements status.</div>
+          </td>
+        </tr>
+        <tr>
+          <td><label>The student has satisfactorily completed all CCRA requirements (ELA, Math, U.S. History, and Science):</label></td>
+          <td>
+            ~[if#mod.security.canmodifyfield=U_StudentsUserFields.TPS_GRAD_CCRA]
+            <select name="[Students.U_StudentsUserFields]TPS_GRAD_CCRA">
+              <option value=""></option>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+              <option value="Exempt">Exempt</option>
+            </select>
+            [else#mod]
+              ~[if#view.security.canviewfield=U_StudentsUserFields.TPS_GRAD_CCRA]
+                ~(decode;~([Students.U_StudentsUserFields]TPS_GRAD_CCRA);No;No;Yes;Yes;Exempt;Exempt;Not Set)
+              [/if#view]
+            [/if#mod]
+            (Beginning Cohort 2022)
+          </td>
+        </tr>
+        <tr style="border-bottom: 2px solid black">
+          <td><label>CCRA Progress</label></td><td id="tps-ccra-indicator"></td>
+        </tr>
+        <tr>
+          <td colspan="2">
+            <div class="feedback-info">Non-Academic graduation requirements status.</div>
+          </td>
+        </tr>
+        <tr style="border-bottom: 2px solid black">
+          <td><label>Non Academic Requirements Progress</label></td><td id="tps-non-academic-indicator"></td>
+        </tr>
+      </table>
+
+      <div class="button-row" style="margin-top:10px">
+        <input type="hidden" name="frn" value="~(studentfrn)">
+        <input type="hidden" name="ac" value="prim">~[submitbutton]
+      </div>
+    </form>
+
+    <hr style="border-top: 20px solid #A3BFCC; width: 98%; margin-left: auto; margin-right: auto; margin-bottom: 20px">
+
+    <!-- ═══════════════════════════════════════════════════════════
+         SECTION 2: Graduation Plan Progress (AngularJS accordion)
+         ═══════════════════════════════════════════════════════════ -->
+    <div id="tpsGpAppRoot"
+         data-require-path="components/tps_gp_progress/index"
+         data-module-name="tpsGpProgressModule"
+         data-bootstrap-local="true"
+         ng-controller="gpProgressCtrl">
+
+      <input type="hidden" id="tps-curstudid" value="~(curstudid)">
+
+      <div ng-if="loading" class="feedback-info">Loading graduation plan data&hellip;</div>
+      <div ng-if="error" class="feedback-error">{{error}}</div>
+      <div ng-if="!loading && !error && gradPlans.length === 0" class="box-round">
+        <p>No graduation plans found for this student.</p>
+      </div>
+
+      <!-- One collapsible box per grad plan -->
+      <div class="box-round" ng-repeat="plan in gradPlans" style="margin-bottom:1rem;">
+
+        <!-- Plan header — click to expand/collapse -->
+        <h2 ng-click="togglePlan(plan)" class="tps-plan-header">
+          <span>{{plan.gradPlan.name}}</span>
+          <span class="tps-plan-progress-label">
+            {{plan._summary.totalEarned | number:2}} / {{plan._summary.totalCapacity | number:0}} credits
+          </span>
+          <div class="tps-overall-bar">
+            <div class="tps-bar-earned" ng-style="{'width': plan._summary.overallPct + '%'}"></div>
+            <div class="tps-bar-enrolled" ng-style="{'width': plan._summary.enrolledPct + '%'}"></div>
+          </div>
+          <span class="tps-toggle-icon">{{expandedPlans[plan.gradPlan.id] ? '&#9650;' : '&#9660;'}}</span>
+        </h2>
+
+        <div ng-show="expandedPlans[plan.gradPlan.id]">
+
+          <!-- Credit summary cards -->
+          <div class="tps-credit-summary-row">
+            <div class="tps-credit-card">
+              <div class="tps-card-label">Total Credits Needed</div>
+              <div class="tps-card-value">{{plan._summary.totalCapacity | number:0}}</div>
+            </div>
+            <div class="tps-credit-card">
+              <div class="tps-card-label">Credits Earned</div>
+              <div class="tps-card-value">{{plan._summary.totalEarned | number:2}}</div>
+            </div>
+            <div class="tps-credit-card">
+              <div class="tps-card-label">Credits Enrolled</div>
+              <div class="tps-card-value">{{plan._summary.totalEnrolled | number:2}}</div>
+            </div>
+            <div class="tps-credit-card">
+              <div class="tps-card-label">Credits Remaining</div>
+              <div class="tps-card-value">{{plan._summary.totalRemaining | number:2}}</div>
+            </div>
+            <div class="tps-credit-card" ng-if="plan._summary.totalTests > 0">
+              <div class="tps-card-label">Tests</div>
+              <div class="tps-card-value">{{plan._summary.testsPassed}} of {{plan._summary.totalTests}}</div>
+            </div>
+          </div>
+
+          <!-- GPA node -->
+          <div ng-if="plan.gpaNode" class="tps-gpa-section">
+            <strong>GPA Requirement:</strong>
+            Required: {{plan.gpaNode.required}} &nbsp;|&nbsp; Actual: {{plan.actualGPA | number:2}}
+            <span ng-if="plan.gpaNode.passed" class="tps-met">&#10003; Met</span>
+            <span ng-if="!plan.gpaNode.passed" class="tps-not-met">&#10007; Not Met</span>
+          </div>
+
+          <!-- Expand All / Collapse All -->
+          <div class="button-row" style="margin-bottom:0.5rem;">
+            <button type="button" class="button" ng-click="toggleAllNodes(plan)">
+              {{plan._allExpanded ? 'Collapse All' : 'Expand All'}}
+            </button>
+          </div>
+
+          <!-- Requirements table -->
+          <table class="tps-req-table">
+            <thead>
+              <tr>
+                <th width="35%">Requirement</th>
+                <th width="30%">Status</th>
+                <th width="25%">Completion</th>
+                <th width="10%" class="center">&#10003;</th>
+              </tr>
+            </thead>
+            <!-- One tbody per node — valid HTML5, avoids ng-repeat-start/end which breaks in AngularJS 1.4 -->
+            <tbody ng-repeat="node in plan.root.children">
+              <tr ng-click="toggleNode(node)"
+                  class="tps-req-row"
+                  ng-class="{'tps-req-row-expanded': node._expanded}">
+                <td>
+                  <span class="tps-expand-icon">{{node._expanded ? '&#9660;' : '&#9654;'}}</span>
+                  {{node.name}}
+                </td>
+                <td>{{node.statusText}}</td>
+                <td>
+                  <div class="tps-progress-bar">
+                    <div class="tps-bar-earned"   ng-style="{'width': node.progressPct + '%'}"></div>
+                    <div class="tps-bar-enrolled" ng-style="{'width': node.enrolledPct + '%'}"></div>
+                  </div>
+                </td>
+                <td class="center">
+                  <span ng-if="node.progressPct >= 100" class="tps-met" style="font-size:1.1em;">&#10003;</span>
+                </td>
+              </tr>
+              <!-- Detail row — always in DOM, shown/hidden via ng-show to keep the tbody intact -->
+              <tr ng-show="node._expanded">
+                <td colspan="4" class="tps-detail-cell">
+
+                  <!-- Sub-requirement children -->
+                  <table class="tps-sub-table" ng-if="node.children.length > 0">
+                    <thead>
+                      <tr>
+                        <th width="40%">Sub-Requirement</th>
+                        <th width="30%">Status</th>
+                        <th width="30%">Completion</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr ng-repeat="child in node.children">
+                        <td style="padding-left:20px;">{{child.name}}</td>
+                        <td>{{child.statusText}}</td>
+                        <td>
+                          <div class="tps-progress-bar">
+                            <div class="tps-bar-earned"   ng-style="{'width': child.progressPct + '%'}"></div>
+                            <div class="tps-bar-enrolled" ng-style="{'width': child.enrolledPct + '%'}"></div>
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <!-- Course detail table -->
+                  <table class="tps-course-table"
+                         ng-if="node.earnedCredits.length > 0 || node.enrolledCredits.length > 0">
+                    <thead>
+                      <tr>
+                        <th>Status</th>
+                        <th>Course</th>
+                        <th>Number</th>
+                        <th>Year</th>
+                        <th>Term</th>
+                        <th>Credits</th>
+                        <th>Grade</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr ng-repeat="credit in node.earnedCredits">
+                        <td><span class="tps-met" title="Earned">&#10003;</span></td>
+                        <td>{{credit.courseName}}</td>
+                        <td>{{credit.courseNumber}}</td>
+                        <td>{{credit.yearName}}</td>
+                        <td>{{credit.termName}}</td>
+                        <td>{{credit.creditHours}}</td>
+                        <td>{{credit.letterGrade}}</td>
+                      </tr>
+                      <tr ng-repeat="credit in node.enrolledCredits" class="tps-enrolled-row">
+                        <td><span style="color:#66aa66;" title="Enrolled (In Progress)">&#9679;</span></td>
+                        <td>{{credit.courseName}}</td>
+                        <td>{{credit.courseNumber}}</td>
+                        <td>{{credit.yearName}}</td>
+                        <td>{{credit.termName}}</td>
+                        <td>{{credit.creditHours}}</td>
+                        <td>&mdash;</td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <!-- No detail message -->
+                  <div class="tps-no-detail"
+                       ng-if="node.earnedCredits.length === 0 && node.enrolledCredits.length === 0 && node.children.length === 0">
+                    No courses applied to this requirement yet.
+                  </div>
+
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- Unused credits -->
+          <div ng-if="plan.unusedCreditDetails.length > 0">
+            <h3 class="tps-section-header">Additional Credits (Not Applied to This Plan)</h3>
+            <table class="tps-course-table">
+              <thead>
+                <tr>
+                  <th>Course</th>
+                  <th>Number</th>
+                  <th>Year</th>
+                  <th>Term</th>
+                  <th>Credits</th>
+                  <th>Grade</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr ng-repeat="credit in plan.unusedCreditDetails">
+                  <td>{{credit.courseName}}</td>
+                  <td>{{credit.courseNumber}}</td>
+                  <td>{{credit.yearName}}</td>
+                  <td>{{credit.termName}}</td>
+                  <td>{{credit.creditHours}}</td>
+                  <td>{{credit.letterGrade}}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div><!-- end expandedPlans -->
+      </div><!-- end ng-repeat plans -->
+
+    </div><!-- end tpsGpAppRoot -->
+
+    ~[wc:admin_footer_css]
+  </body>
+</html>

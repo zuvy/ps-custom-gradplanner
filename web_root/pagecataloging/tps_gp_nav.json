@@ -1,0 +1,14 @@
+{
+  "pages": [
+    {
+      "htmlID": "gp_progress",
+      "parentHTMLID": "navStudentGraduationPlanningSection",
+      "title": "Custom Graduation Progress",
+      "pageURL": "/admin/students/gp_progress.html?frn=~(studentfrn)",
+      "sortOrder": "400",
+      "contextType": "student",
+      "requiredContext": "student",
+      "version": "0.1.0.0"
+    }
+  ]
+}
