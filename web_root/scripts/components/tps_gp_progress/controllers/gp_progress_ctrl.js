@@ -104,9 +104,14 @@ define(function(require) {
                     totalTests: totalTests,
                     testsPassed: testsPassed
                 },
-                _allExpanded: false
+                _allExpanded: false,
+                _unusedExpanded: false
             };
         }
+
+        $scope.toggleUnused = function(plan) {
+            plan._unusedExpanded = !plan._unusedExpanded;
+        };
 
         $scope.togglePlan = function(plan) {
             var id = plan.gradPlan.id;

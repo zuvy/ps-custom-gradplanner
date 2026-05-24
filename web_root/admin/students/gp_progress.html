@@ -781,6 +781,7 @@
 
         <!-- Plan header — click to expand/collapse -->
         <h2 ng-click="togglePlan(plan)" class="tps-plan-header">
+          <span class="tps-expand-icon">{{expandedPlans[plan.gradPlan.id] ? '&#9660;' : '&#9654;'}}</span>
           <span>{{plan.gradPlan.name}}</span>
           <span class="tps-plan-progress-label">
             {{plan._summary.totalEarned | number:2}} / {{plan._summary.totalCapacity | number:0}} credits
@@ -789,7 +790,6 @@
             <div class="tps-bar-earned" ng-style="{'width': plan._summary.overallPct + '%'}"></div>
             <div class="tps-bar-enrolled" ng-style="{'width': plan._summary.enrolledPct + '%'}"></div>
           </div>
-          <span class="tps-toggle-icon">{{expandedPlans[plan.gradPlan.id] ? '&#9650;' : '&#9660;'}}</span>
         </h2>
 
         <div ng-show="expandedPlans[plan.gradPlan.id]">
@@ -867,7 +867,7 @@
               <tr ng-show="node._expanded">
                 <td colspan="4" class="tps-detail-cell">
 
-                  <!-- Sub-requirement children -->
+                  <!-- Sub-requirement children (each expandable to show courses) -->
                   <table class="tps-sub-table" ng-if="node.children.length > 0">
                     <thead>
                       <tr>
@@ -876,14 +876,77 @@
                         <th width="30%">Completion</th>
                       </tr>
                     </thead>
-                    <tbody>
-                      <tr ng-repeat="child in node.children">
-                        <td style="padding-left:20px;">{{child.name}}</td>
+                    <tbody ng-repeat="child in node.children">
+                      <tr ng-click="toggleNode(child)"
+                          class="tps-req-row"
+                          ng-class="{'tps-req-row-expanded': child._expanded}">
+                        <td style="padding-left:20px;">
+                          <span class="tps-expand-icon">{{child._expanded ? '&#9660;' : '&#9654;'}}</span>
+                          {{child.name}}
+                        </td>
                         <td>{{child.statusText}}</td>
                         <td>
                           <div class="tps-progress-bar">
                             <div class="tps-bar-earned"   ng-style="{'width': child.progressPct + '%'}"></div>
                             <div class="tps-bar-enrolled" ng-style="{'width': child.enrolledPct + '%'}"></div>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr ng-show="child._expanded">
+                        <td colspan="3" class="tps-detail-cell" style="padding-left:2rem;">
+                          <!-- Grandchild sub-requirements (if any) -->
+                          <table class="tps-sub-table" ng-if="child.children && child.children.length > 0">
+                            <tbody>
+                              <tr ng-repeat="grandchild in child.children">
+                                <td style="padding-left:20px;">{{grandchild.name}}</td>
+                                <td>{{grandchild.statusText}}</td>
+                                <td>
+                                  <div class="tps-progress-bar">
+                                    <div class="tps-bar-earned"   ng-style="{'width': grandchild.progressPct + '%'}"></div>
+                                    <div class="tps-bar-enrolled" ng-style="{'width': grandchild.enrolledPct + '%'}"></div>
+                                  </div>
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                          <!-- Child course detail -->
+                          <table class="tps-course-table"
+                                 ng-if="child.earnedCredits.length > 0 || child.enrolledCredits.length > 0">
+                            <thead>
+                              <tr>
+                                <th>Status</th>
+                                <th>Course</th>
+                                <th>Number</th>
+                                <th>Year</th>
+                                <th>Term</th>
+                                <th>Credits</th>
+                                <th>Grade</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr ng-repeat="credit in child.earnedCredits">
+                                <td><span class="tps-met" title="Earned">&#10003;</span></td>
+                                <td>{{credit.courseName}}</td>
+                                <td>{{credit.courseNumber}}</td>
+                                <td>{{credit.yearName}}</td>
+                                <td>{{credit.termName}}</td>
+                                <td>{{credit.creditHours}}</td>
+                                <td>{{credit.letterGrade}}</td>
+                              </tr>
+                              <tr ng-repeat="credit in child.enrolledCredits" class="tps-enrolled-row">
+                                <td><span style="color:#66aa66;" title="Enrolled (In Progress)">&#9679;</span></td>
+                                <td>{{credit.courseName}}</td>
+                                <td>{{credit.courseNumber}}</td>
+                                <td>{{credit.yearName}}</td>
+                                <td>{{credit.termName}}</td>
+                                <td>{{credit.creditHours}}</td>
+                                <td>&mdash;</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                          <div class="tps-no-detail"
+                               ng-if="child.earnedCredits.length === 0 && child.enrolledCredits.length === 0 && (!child.children || child.children.length === 0)">
+                            No courses applied to this requirement yet.
                           </div>
                         </td>
                       </tr>
@@ -935,34 +998,45 @@
                 </td>
               </tr>
             </tbody>
+            <!-- Additional Credits — inside the table so it inherits all row/border styling; not affected by Expand All -->
+            <tbody ng-if="plan.unusedCreditDetails.length > 0">
+              <tr ng-click="toggleUnused(plan)"
+                  class="tps-req-row"
+                  ng-class="{'tps-req-row-expanded': plan._unusedExpanded}">
+                <td colspan="4">
+                  <span class="tps-expand-icon">{{plan._unusedExpanded ? '&#9660;' : '&#9654;'}}</span>
+                  Additional Credits (Not Applied to This Plan)
+                  <span style="font-size:0.85em; color:#888; margin-left:0.5rem;">{{plan.unusedCreditDetails.length}} course(s)</span>
+                </td>
+              </tr>
+              <tr ng-show="plan._unusedExpanded">
+                <td colspan="4" class="tps-detail-cell">
+                  <table class="tps-course-table">
+                    <thead>
+                      <tr>
+                        <th>Course</th>
+                        <th>Number</th>
+                        <th>Year</th>
+                        <th>Term</th>
+                        <th>Credits</th>
+                        <th>Grade</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr ng-repeat="credit in plan.unusedCreditDetails">
+                        <td>{{credit.courseName}}</td>
+                        <td>{{credit.courseNumber}}</td>
+                        <td>{{credit.yearName}}</td>
+                        <td>{{credit.termName}}</td>
+                        <td>{{credit.creditHours}}</td>
+                        <td>{{credit.letterGrade}}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </td>
+              </tr>
+            </tbody>
           </table>
-
-          <!-- Unused credits -->
-          <div ng-if="plan.unusedCreditDetails.length > 0">
-            <h3 class="tps-section-header">Additional Credits (Not Applied to This Plan)</h3>
-            <table class="tps-course-table">
-              <thead>
-                <tr>
-                  <th>Course</th>
-                  <th>Number</th>
-                  <th>Year</th>
-                  <th>Term</th>
-                  <th>Credits</th>
-                  <th>Grade</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr ng-repeat="credit in plan.unusedCreditDetails">
-                  <td>{{credit.courseName}}</td>
-                  <td>{{credit.courseNumber}}</td>
-                  <td>{{credit.yearName}}</td>
-                  <td>{{credit.termName}}</td>
-                  <td>{{credit.creditHours}}</td>
-                  <td>{{credit.letterGrade}}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
 
         </div><!-- end expandedPlans -->
       </div><!-- end ng-repeat plans -->
